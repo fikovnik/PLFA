@@ -1,0 +1,230 @@
+* PLFA
+** Numbers
+*** Naturals
+**** Definition
+
+#+BEGIN_SRC agda2
+data ℕ : Set where
+  zero : ℕ
+  suc  : ℕ → ℕ
+#+END_SRC
+
+This is called an inductive definition of natural numbers. We call it inductive
+because it consists of a base rule, where we define a fixed starting point, and
+an inductive rule that, when applied to an element of the set, induces the next
+element of the set. This is a very elegant way to define infinitely large sets.
+This way of defining natural numbers was developed by a mathematician named
+Giuseppe Peano, and so they’re called the Peano numbers.
+
+The interesting part is that the type =data ℕ : Set= itself has a type =Set=.
+What is the type of =Set=?
+
+***** Russel's paradox
+
+#+BEGIN_QUOTE
+Most sets which one commonly encounters are not members of themselves. For
+example, take the set of all squares in the plane. That set is not itself a
+square in the plane, and therefore is not a member of itself. Let us call a set
+"normal" if it is not a member of itself, and "abnormal" if it is a member of
+itself. The set of squares in the plane is normal. On the other hand, the
+complementary set that contains everything which is not a square in the plane is
+itself not a square in the plane, and so should be one of its own members and is
+therefore abnormal.
+
+Now we consider the set of all normal sets, R, and try to determine whether R is
+normal or abnormal. If R were normal, it would be contained in the set of all
+normal sets (itself), and therefore be abnormal; on the other hand if R were
+abnormal, it would not be contained in the set of all normal sets (itself), and
+therefore be normal. This leads to the conclusion that R is neither normal nor
+abnormal: Russell's paradox.
+#+END_QUOTE
+- discovered Bertrand Russell in 1901
+- from [[https://en.wikipedia.org/wiki/Russell's_paradox][wikipedia]]
+
+*** Binaries
+**** Bin data definition
+#+BEGIN_SRC agda2
+data Bin : Set where
+  ⟨⟩ : Bin
+  _O : Bin → Bin
+  _I : Bin → Bin
+#+END_SRC
+**** fun: inc
+***** defintion
+#+BEGIN_SRC agda2
+inc : Bin → Bin
+inc ⟨⟩ = ⟨⟩ I
+inc (x O) = x I
+inc (x I) = inc x O
+#+END_SRC
+***** test
+#+BEGIN_SRC agda2
+b11 = ⟨⟩ I O I I
+b12 = ⟨⟩ I I O O
+
+_ : inc b11 ≡ b12
+ _ = refl
+#+END_SRC
+**** fun: to
+***** definition
+#+BEGIN_SRC agda2
+to : ℕ → Bin
+to zero = ⟨⟩ O
+to (suc n) = inc (to n)
+#+END_SRC
+***** test
+#+BEGIN_SRC agda2
+_ : to 12 ≡ b12
+_ = refl
+#+END_SRC
+**** fun: from
+***** definition
+#+BEGIN_SRC agda
+from : Bin → ℕ
+from ⟨⟩ = zero
+from (x O) = from x * 2
+from (x I) = from x * 2 + 1
+#+END_SRC
+***** test
+#+BEGIN_SRC agda2
+_ : from b12 ≡ 12
+_ = refl
+#+END_SRC
+** Induction
+#+BEGIN_QUOTE
+Induction makes you feel guilty for getting something out of nothing … but it is
+one of the greatest ideas of civilization. – Herbert Wilf
+#+END_QUOTE
+*** Properties of operators
+
+- *Identity.* Operator =+= has left identity =0= if =0 + n ≡ n=, and right
+  identity =0= if =n + 0 ≡ n=, for all =n=. A value that is both a left and
+  right identity is just called an identity. Identity is also sometimes called
+  unit.
+
+- *Associativity.* Operator =+= is associative if the location of parentheses
+  does not matter: =(m + n) + p ≡ m + (n + p)=, for all =m=, =n=, and =p=.
+
+- *Commutativity.* Operator =+= is commutative if order of arguments does not
+  matter: =m + n ≡ n + m=, for all =m= and =n=.
+
+- *Distributivity.* Operator =*= distributes over operator =+= from the left if
+  =(m + n) * p ≡ (m * p) + (n * p)=, for all =m=, =n=, and =p=, and from the
+  right if =m * (p + q) ≡ (m * p) + (m * q)=, for all =m=, =p=, and =q=.
+*** Dependent function
+
+- =∀= as the /universal quantifier/
+
+- /evidence/ for a universal quantifier is a function
+
+- notations
+
+  #+BEGIN_SRC agda2
+  +-assoc : ∀ (m n p : ℕ) → (m + n) + p ≡ m + (n + p)
+  #+END_SRC
+
+  and
+
+  #+BEGIN_SRC agda2
+  +-assoc : ∀ (m : ℕ) → ∀ (n : ℕ) → ∀ (p : ℕ) → (m + n) + p ≡ m + (n + p)
+  #+END_SRC
+
+  are equivalent. They differ from a function type such as ℕ → ℕ → ℕ in that
+  variables are associated with each argument type, and the result type may
+  mention (or depend upon) these variables; hence they are called /dependent
+  functions/.
+
+* Agda
+** Imports
+
+#+BEGIN_SRC agda2
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl)
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _∎)
+#+END_SRC
+
+- imports ~PropositionalEquality~ as ~Eq~
+- adds all symbols after ~using~ into current scope
+- the ~≡-Reasoning~ is a nested module I guess
+
+** Comments
+#+BEGIN_SRC agda2
+-- a single line comment
+{- a multi
+   line comment -}
+#+END_SRC
+
+** Pragmas
+*** Bring in the world of natural numbers
+
+#+BEGIN_SRC agda2
+{-# BUILD NATURAL ℕ #-}
+#+END_SRC
+
+*** Import Haskell operators
+
+#+BEGIN_SRC agda2
+{-# BUILTIN NATPLUS _+_ #-}
+{-# BUILTIN NATTIMES _*_ #-}
+{-# BUILTIN NATMINUS _∸_ #-}
+#+END_SRC
+
+** Operators
+
+- ~_+_~ declares an infix operator - the ~_~ specifies where does it expects operands
+- ~_+_ : ℕ → ℕ → ℕ~ is a curried function definition of a plus
+- the definition is like a /pattern matching/ (constructors appear on the
+  left-hand side of an equation), it has to be indented (starts where the
+  operator definition starts
+- ~_+_ n m~ is the same as ~n + m~ (actually ~(__+__ n) m~)
+
+*** Precedence
+
+#+BEGIN_SRC agda2
+infixl 6  _+_  _∸_
+infixl 7  _*_
+#+END_SRC
+
+- ~infixl~ binding from the left
+- ~infixr~ binding from the right
+- ~infix~ parenthesis required
+** Resources
+- [[http://learnyouanagda.liamoc.net/toc.html][Learn you an Agda]]
+* Agda-mode
+** Keys
+| Key           | Function              |
+|---------------+-----------------------|
+| =C-c C-l=     | Load file             |
+| =C-c C-x C-r= | Kill and restart agda |
+| =M-.=         | Go to definition      |
+| =M-,=         | Go back               |
+| =C-c C-d=     | Deduce type           |
+| =C-c C-n=     | Normal form           |
+*** Interactive definitions
+
+1. Write =?=
+2. =C-c C-l= - load
+3. =C-c C-f= - go to following hole
+4. =C-c C-c= - define by recursion (case split)
+5. =C-c C-,= - goal type and context
+6. =C-c C-space= - fill goal
+** Input
+| Symbol | Unicode | Agda input mode  |
+|--------+---------+------------------|
+| ℕ      | U+2115  | (\bN)            |
+| →      | U+2192  | (\to,  \r,  \->) |
+| ∸      | U+2238  | (\.-)            |
+| ≡      | U+2261  | (\==)            |
+| ⟨      | U+27E8  | (\<)             |
+| ⟩      | U+27E9  | (\>)             |
+| ∎      | U+220E  | (\qed)           |
+| ∀      | U+2200  | (\forall, \all)  |
+| ʳ      | U+02B3  | (\^r)            |
+| ′      | U+2032  | PRIME (\')       |
+* Misc
+** Numbers
+#+BEGIN_QUOTE
+Inductive definition of natural numbers is relatively recent. It can be traced
+back to Richard Dedekind’s paper “Was sind und was sollen die Zahlen?” (What
+are and what should be the numbers?), published in 1888
+#+END_QUOTE

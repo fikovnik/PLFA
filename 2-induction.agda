@@ -409,8 +409,6 @@ for all m, n, and p. -}
   ≡⟨ cong (_* (n ^ p)) (*-assoc m n (m ^ p)) ⟩
     (m * (n * (m ^ p))) * (n ^ p)
   ≡⟨ cong (_* (n ^ p)) (cong (m *_) (*-comm n (m ^ p))) ⟩
-  {- TODO Not sure why this does not work, looks like the pattern cannot be nested? -}
-  -- ≡⟨ cong ((m *_) * (n ^ p)) (*-comm n (m ^ p)) ⟩
     (m * ((m ^ p) * n)) * (n ^ p)
   ≡⟨ *-assoc m ((m ^ p) * n) (n ^ p) ⟩
     m * (((m ^ p) * n) * (n ^ p))

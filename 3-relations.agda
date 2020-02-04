@@ -463,14 +463,14 @@ data even where
       ---------
       even zero
 
-  suc  : ∀ {n : ℕ}
+  suc-e  : ∀ {n : ℕ}
     → odd n
       ------------
     → even (suc n)
 
 data odd where
 
-  suc   : ∀ {n : ℕ}
+  suc-o   : ∀ {n : ℕ}
     → even n
       -----------
     → odd (suc n)
@@ -505,9 +505,9 @@ o+e≡o : ∀ {m n : ℕ}
 -- e+e≡e and o+e≡o are mutually recursive functions (need to be declard first)
 
 e+e≡e zero     en  =  en
-e+e≡e (suc om) en  =  suc (o+e≡o om en)
+e+e≡e (suc-e om) en  =  suc-e (o+e≡o om en)
 
-o+e≡o (suc em) en  =  suc (e+e≡e em en)
+o+e≡o (suc-o em) en  =  suc-o (e+e≡e em en)
 
 -- emn≡enm : ∀ {m n : ℕ} → odd m → odd n → even (m + n) ≡ even (n + m)
 -- emn≡enm (suc {n} x) (suc {n₁} x₁) rewrite +-comm (suc n) (suc n₁) = refl
@@ -518,15 +518,166 @@ Show that the sum of two odd numbers is even.-}
 
 -- From some reason I got quite stuck on this one,
 -- as I was trying to use commutativity since the
--- o+e≡o x y was returning the odd (m + n) instead of the other way around
+-- o+e≡o x y was returning the odd (m + n) instead
+-- of the other way around:
+
+-- first try ended up quite horribly:
 
 o+o≡e′ : ∀ {m n : ℕ} → odd m → odd n → even (n + m)
-o+o≡e′ x (suc y) = suc (+-odd-comm x y (o+e≡o x y)) where
+o+o≡e′ x (suc-o y) = suc-e (+-odd-comm x y (o+e≡o x y)) where
   +-odd-comm : ∀ {m n : ℕ} → odd m → even n → odd (m + n) → odd (n + m)
-  +-odd-comm (suc m) zero _ = suc m
-  +-odd-comm (suc {m} _) (suc {n} _) rewrite +-comm (suc m) (suc n) = λ z → z
+  +-odd-comm (suc-o m) zero _ = suc-o m
+  +-odd-comm (suc-o {m} _) (suc-e {n} _) rewrite +-comm (suc m) (suc n) = λ z → z
 
--- instead, the trick is to double match on m
+-- second try, after renaming suc to suc-e and suc-o
+
+o+o≡e″ : ∀ {m n : ℕ} → odd m → odd n → even (m + n)
+o+o≡e″ {m} x (suc-o {n} y)
+  rewrite            -- even (m + suc n)
+    +-comm m (suc n) -- even (suc (n + m))
+  | +-comm n m       -- even (suc (m + n)) ≡ suc-e (odd (m + n))
+  = suc-e (o+e≡o x y)
+
+-- finally, a simple way is to double match on the first argument:
+
 o+o≡e : ∀ {m n : ℕ} → odd m → odd n → even (m + n)
-o+o≡e (suc zero) n = suc n
-o+o≡e (suc (suc x)) n = suc (suc (o+o≡e x n))
+o+o≡e (suc-o zero) n = suc-e n
+o+o≡e (suc-o (suc-e x)) n = suc-e (suc-o (o+o≡e x n))
+
+-- I always try to explore a bit, by matching on all, one, ... but double
+-- matching I used so far only twice, this included.
+
+
+--
+-- BINARY
+--
+open import 2-induction using (Bin; ⟨⟩; _O; _I; inc; from; to; +-suc)
+
+eleven  = ⟨⟩ I O I I
+eleven′ = ⟨⟩ O O I O I I
+twelve  = ⟨⟩ I I O O
+twelve′ = ⟨⟩ O O I I O O
+
+{- Exercise:
+
+Define a predicate
+
+Can : Bin → Set
+
+over all bitstrings that holds if the bitstring is canonical, meaning it has no
+leading zeros; the first representation of eleven above is canonical, and the
+second is not. To define it, you will need an auxiliary predicate
+
+One : Bin → Set
+
+that holds only if the bistring has a leading one. A bitstring is canonical if
+it has a leading one (representing a positive number) or if it consists of a
+single zero (representing zero). -}
+
+data One : Bin → Set where
+  one-⟨⟩ : One (⟨⟩ I)
+  one-O  : ∀ {b : Bin}
+    → One b
+      ---------
+    → One (b O)
+  one-I  : ∀ {b : Bin}
+    → One b
+      ---------
+    → One (b I)
+
+data  Can : Bin → Set where
+  can-⟨⟩  : Can ⟨⟩
+  can-one : ∀ {b : Bin} → One b → Can b
+
+{- Exercise:
+
+Show that increment preserves canonical bitstrings:
+
+Can b
+------------
+Can (inc b) -}
+
+-- tried a few things, but again matching twice on first param works
+-- actually, it works using auto
+inc-preserves-one : ∀ {b : Bin} -> Can b -> One (inc b)
+inc-preserves-one can-⟨⟩ = one-⟨⟩
+inc-preserves-one (can-one one-⟨⟩) = one-O one-⟨⟩
+inc-preserves-one (can-one (one-O x)) = one-I x
+inc-preserves-one (can-one (one-I x)) = one-O (inc-preserves-one (can-one x))
+
+-- trying the same as with inc-preserves-one
+inc-preserves-can : ∀ {b : Bin} → Can b → Can (inc b)
+inc-preserves-can can-⟨⟩ = can-one one-⟨⟩
+inc-preserves-can (can-one one-⟨⟩) = can-one (one-O one-⟨⟩)
+inc-preserves-can (can-one (one-O x)) = can-one (one-I x)
+inc-preserves-can (can-one (one-I x)) = can-one (one-O (inc-preserves-one (can-one x)))
+
+-- since, it is exactly the same as inc-preserves-one except the can-one prefix
+-- it can be simplified into this:
+inc-preserves-can′ : ∀ {b : Bin} → Can b → Can (inc b)
+inc-preserves-can′ can = can-one (inc-preserves-one can)
+
+{- Exercise: 
+
+Show that converting a natural to a bitstring always yields a canonical bitstring:
+
+----------
+Can (to n) -}
+
+to-yields-can : ∀ (n : ℕ) → Can (to n)
+to-yields-can zero = can-⟨⟩
+to-yields-can (suc n) = inc-preserves-can (to-yields-can n)
+
+{- Exercise:
+
+Show that converting a canonical bitstring to a natural and back is the identity:
+
+Can b
+---------------
+to (from b) ≡ b
+
+hint: you may need to prove that 1 is less or equal to the result of from b. -}
+
+open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
+
+to-2sn : ∀ (n : ℕ) → 0 ≤ n → to (suc n + suc n) ≡ (to (suc n)) O
+to-2sn zero z≤n = refl
+to-2sn (suc n) z≤n =
+  begin -- goal:  (to (suc (suc n)) O) -- (inc (to (suc n)) O) --> (inc (int (to n)) O)
+    to (suc (suc n) + suc (suc n))
+  ≡⟨⟩
+    to (suc (suc n + suc (suc n)))
+  ≡⟨⟩
+    to (suc (suc (n + suc (suc n))))
+  ≡⟨ cong to (cong suc (cong suc (+-suc n (suc n)))) ⟩ -- getting to understand the power of rewrites
+    to (suc (suc (suc n + suc n))) -- suc (n + suc n) --> suc(n + n)
+  ≡⟨⟩
+    inc (inc (to (suc n + suc n)))
+  ≡⟨ cong inc (cong inc (to-2sn n z≤n)) ⟩
+    inc (inc ((to (suc n)) O))
+  ≡⟨⟩
+    inc (inc (to n) I)
+  ≡⟨⟩
+    (inc (inc (to n))) O
+  ≡⟨⟩
+    (to (suc (suc n))) O
+  ∎
+
+-- ok, here is the version with rewrite
+to-2sn′ : ∀ (n : ℕ) → 0 ≤ n → to (suc n + suc n) ≡ (to (suc n)) O
+to-2sn′ zero z≤n = refl
+to-2sn′ (suc n) z≤n rewrite +-suc n (suc n) | to-2sn′ n z≤n = refl
+
+to-2n : ∀ (n : ℕ) → 1 ≤ n → to (n + n) ≡ (to n) O
+to-2n zero ()
+to-2n (suc n) (s≤s 0≤n) = to-2sn n 0≤n
+
+1≤-from-one : ∀ {b : Bin} → One b → 1 ≤ from b
+1≤-from-one one-⟨⟩ = s≤s z≤n
+1≤-from-one (one-O one) = {!!}
+1≤-from-one (one-I _) = s≤s z≤n
+
+can-to-from : ∀ (b : Bin) → Can b → to (from b) ≡ b
+can-to-from ⟨⟩ can-⟨⟩ = refl
+can-to-from (b O) (can-one x) rewrite to-2n (from b) {!!} | can-to-from b {!!} = refl
+can-to-from (b I) (can-one x) rewrite to-2n (from b) {!!} | can-to-from b {!!} = refl

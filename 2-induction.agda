@@ -482,13 +482,13 @@ inc (x O) = x I
 inc (x I) = (inc x) O
 
 to : ℕ → Bin
-to zero = ⟨⟩ O
+to zero = ⟨⟩
 to (suc m) = inc (to m)
 
 from : Bin → ℕ
 from ⟨⟩ = zero
-from (m O) = 2 * from m
-from (m I) = 1 + 2 * from m
+from (m O) = from m + from m
+from (m I) = 1 + from m + from m
 
 from-inc-b : ∀ (b : Bin) → from (inc b) ≡ suc (from b)
 from-inc-b ⟨⟩ = refl
@@ -501,7 +501,7 @@ from-inc-b (b I) rewrite
 
 -- to-from-b : ∀ (b : Bin) → to (from b) ≢ b
 -- counter example to (from ⟨⟩) ≡ ⟨⟩ O ≢ ⟨⟩
--- case splittinfg on b will make this the first case
+-- the problem are the leading zeros
 
 from-to-n : ∀ (n : ℕ) → from (to n) ≡ n
 from-to-n zero = refl

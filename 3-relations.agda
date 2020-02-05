@@ -640,9 +640,9 @@ hint: you may need to prove that 1 is less or equal to the result of from b. -}
 
 open Eq.≡-Reasoning using (begin_; _≡⟨⟩_; _≡⟨_⟩_; _∎)
 
-to-2sn : ∀ (n : ℕ) → 0 ≤ n → to (suc n + suc n) ≡ (to (suc n)) O
-to-2sn zero z≤n = refl
-to-2sn (suc n) z≤n =
+to-2sn : ∀ (n : ℕ) → to (suc n + suc n) ≡ (to (suc n)) O
+to-2sn zero = refl
+to-2sn (suc n) =
   begin -- goal:  (to (suc (suc n)) O) -- (inc (to (suc n)) O) --> (inc (int (to n)) O)
     to (suc (suc n) + suc (suc n))
   ≡⟨⟩
@@ -653,7 +653,7 @@ to-2sn (suc n) z≤n =
     to (suc (suc (suc n + suc n))) -- suc (n + suc n) --> suc(n + n)
   ≡⟨⟩
     inc (inc (to (suc n + suc n)))
-  ≡⟨ cong inc (cong inc (to-2sn n z≤n)) ⟩
+  ≡⟨ cong inc (cong inc (to-2sn n)) ⟩
     inc (inc ((to (suc n)) O))
   ≡⟨⟩
     inc (inc (to n) I)
@@ -663,14 +663,14 @@ to-2sn (suc n) z≤n =
     (to (suc (suc n))) O
   ∎
 
--- ok, here is the version with rewrite
+-- OK, here is the version with rewrite, but after a battle everyone is a general
 to-2sn′ : ∀ (n : ℕ) → to (suc n + suc n) ≡ (to (suc n)) O
 to-2sn′ zero = refl
 to-2sn′ (suc n) rewrite +-suc n (suc n) | to-2sn′ n = refl
 
 to-2n : ∀ (n : ℕ) → 1 ≤ n → to (n + n) ≡ (to n) O
 to-2n zero ()
-to-2n (suc n) (s≤s 0≤n) = to-2sn n 0≤n
+to-2n (suc n) _ = to-2sn n
 
 can-from-bO : ∀ {b : Bin} → One (b O) → Can b
 can-from-bO (one-O one) = can-one one
@@ -687,12 +687,50 @@ can-from-bI (one-I one) = can-one one
 1≤-from-bO (b O) (one-O one) = 1≤m+n (from b) (from b) (1≤-from-bO b one)
 1≤-from-bO (b I) (one-O one) = s≤s z≤n
 
-1≤-from-bI : ∀ (b : Bin) → One (b I) → 1 ≤ from b
-1≤-from-bI ⟨⟩ one-⟨⟩ = {!!}
-1≤-from-bI (b O) (one-I one) = 1≤m+n (from b) (from b) (1≤-from-bO b one)
-1≤-from-bI (b I) (one-I one) = s≤s z≤n
+-- this does not work, cannot work as b could be ⟨⟩
+-- 1≤-from-bI : ∀ (b : Bin) → One (b I) → 1 ≤ from b
+-- 1≤-from-bI ⟨⟩ one-⟨⟩ = {!!}
+-- 1≤-from-bI (b O) (one-I one) = 1≤m+n (from b) (from b) (1≤-from-bO b one)
+-- 1≤-from-bI (b I) (one-I one) = s≤s z≤n
 
 can-to-from : ∀ (b : Bin) → Can b → to (from b) ≡ b
 can-to-from ⟨⟩ can-⟨⟩ = refl
-can-to-from (b O) (can-one one) rewrite to-2n (from b) (1≤-from-bO b one) | can-to-from b (can-from-bO one) = refl
-can-to-from (b I) (can-one one) rewrite to-2n (from b) (1≤-from-bI b one) | can-to-from b (can-from-bI one) = refl
+can-to-from (b O) (can-one one)
+  rewrite                             -- to (from b + from b) ≡ (b O)
+    to-2n (from b) (1≤-from-bO b one) -- (to (from b) O) ≡ (b O)
+  | can-to-from b (can-from-bO one)
+  = refl
+
+-- can-to-from (b I) will not work:
+--   the to-2n needs 1 ≤ from b - but since I do not know if b is not ⟨⟩ I cannot use it (it == to-2n)
+
+can-to-from (⟨⟩ I) (can-one one-⟨⟩) = refl
+
+-- In the following two, one have to be careful not be misled by the normalized
+-- goal after the first rewrite, it actually looks like the case of additional
+-- call to to-2n but it is not necessary! In the case of can-to-from ((b O) I)
+-- it will be OK as we can prove that 1 ≤ from b, but in the next case
+-- can-to-from ((b I) I) we cannot proove that 1 ≤ from b so we won't be able to
+-- call to-2n.
+
+can-to-from ((b O) I) (can-one (one-I one))
+  rewrite                                                           -- inc (to (from b + from b + (from b + from b))) ≡ ((b O) I)
+    to-2n (from (b O)) (1≤m+n (from b) (from b) (1≤-from-bO b one))
+    -- here it gets confusing:
+    -- - the global goal is: inc (to (from b + from b) O) ≡ ((b O) I)
+    -- - the normalized goal is: ((to (from b + from b)) I) ≡ ((b O) I)
+    --
+    -- this looks like a perfect candidate for to-2n, but it is not! (in this
+    -- case we could use it), but the point is that we can leverage that we have
+    -- (b O), that is from (b O) ≡ from b + from b, so our new goal is:
+    -- ((to (from (b O))) I) ≡ ((b O) I)
+    -- and for that we can inductively call can-to-from
+    | can-to-from (b O) (can-from-bO (one-O one))
+  = refl
+
+can-to-from ((b I) I) (can-one (one-I one))
+   rewrite                        -- inc (inc (to (from b + from b + suc (from b + from b)))) ≡ ((b I) I)
+     to-2n (from (b I)) (s≤s z≤n) -- (inc (to (from b + from b)) I) ≡ ((b I) I)
+     -- the same as above applies here as well
+  | can-to-from (b I) (can-from-bI (one-I one))
+  = refl

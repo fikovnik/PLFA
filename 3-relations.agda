@@ -664,20 +664,35 @@ to-2sn (suc n) z≤n =
   ∎
 
 -- ok, here is the version with rewrite
-to-2sn′ : ∀ (n : ℕ) → 0 ≤ n → to (suc n + suc n) ≡ (to (suc n)) O
-to-2sn′ zero z≤n = refl
-to-2sn′ (suc n) z≤n rewrite +-suc n (suc n) | to-2sn′ n z≤n = refl
+to-2sn′ : ∀ (n : ℕ) → to (suc n + suc n) ≡ (to (suc n)) O
+to-2sn′ zero = refl
+to-2sn′ (suc n) rewrite +-suc n (suc n) | to-2sn′ n = refl
 
 to-2n : ∀ (n : ℕ) → 1 ≤ n → to (n + n) ≡ (to n) O
 to-2n zero ()
 to-2n (suc n) (s≤s 0≤n) = to-2sn n 0≤n
 
-1≤-from-one : ∀ {b : Bin} → One b → 1 ≤ from b
-1≤-from-one one-⟨⟩ = s≤s z≤n
-1≤-from-one (one-O one) = {!!}
-1≤-from-one (one-I _) = s≤s z≤n
+can-from-bO : ∀ {b : Bin} → One (b O) → Can b
+can-from-bO (one-O one) = can-one one
+
+can-from-bI : ∀ {b : Bin} → One (b I) → Can b
+can-from-bI one-⟨⟩ = can-⟨⟩
+can-from-bI (one-I one) = can-one one
+
+1≤m+n : ∀ (m n : ℕ) → 1 ≤ m → 1 ≤ m + n
+1≤m+n _ zero (s≤s 1≤m) = s≤s z≤n
+1≤m+n _ (suc _) (s≤s 1≤m) = s≤s z≤n
+
+1≤-from-bO : ∀ (b : Bin) → One (b O) → 1 ≤ from b
+1≤-from-bO (b O) (one-O one) = 1≤m+n (from b) (from b) (1≤-from-bO b one)
+1≤-from-bO (b I) (one-O one) = s≤s z≤n
+
+1≤-from-bI : ∀ (b : Bin) → One (b I) → 1 ≤ from b
+1≤-from-bI ⟨⟩ one-⟨⟩ = {!!}
+1≤-from-bI (b O) (one-I one) = 1≤m+n (from b) (from b) (1≤-from-bO b one)
+1≤-from-bI (b I) (one-I one) = s≤s z≤n
 
 can-to-from : ∀ (b : Bin) → Can b → to (from b) ≡ b
 can-to-from ⟨⟩ can-⟨⟩ = refl
-can-to-from (b O) (can-one x) rewrite to-2n (from b) {!!} | can-to-from b {!!} = refl
-can-to-from (b I) (can-one x) rewrite to-2n (from b) {!!} | can-to-from b {!!} = refl
+can-to-from (b O) (can-one one) rewrite to-2n (from b) (1≤-from-bO b one) | can-to-from b (can-from-bO one) = refl
+can-to-from (b I) (can-one one) rewrite to-2n (from b) (1≤-from-bI b one) | can-to-from b (can-from-bI one) = refl
